@@ -1,6 +1,6 @@
 # CRUD Produk — Next.js + MySQL (Aiven) + Vercel
 
-Aplikasi CRUD sederhana (Create, Read, Update, Delete) untuk data "produk",
+Aplikasi CRUD sederhana (Create, Read, Update, Delete) untuk data produk dan stok,
 dibangun dengan Next.js App Router dan database MySQL, siap deploy ke Vercel
 dengan database di Aiven.
 
@@ -15,7 +15,7 @@ app/
   globals.css
 lib/
   db.js                         -> Koneksi pool MySQL (support SSL Aiven)
-schema.sql                      -> Skema tabel `products`
+schema.sql                     -> Skema tabel `products` dan `stocks`
 .env.local.example              -> Contoh environment variables
 ```
 
@@ -25,11 +25,22 @@ schema.sql                      -> Skema tabel `products`
 2. Pilih region terdekat, tunggu status menjadi "Running".
 3. Buka tab **Overview**, catat: `Host`, `Port`, `User` (biasanya `avnadmin`), `Password`, `Database name` (default `defaultdb`).
 4. Download **CA Certificate** (`ca.pem`) dari halaman yang sama.
-5. Buat tabelnya. Bisa lewat Aiven Console (query editor) atau CLI MySQL:
+5. Aplikasi membuat tabel `products` dan `stocks` secara otomatis saat API
+   pertama kali dipanggil. Pastikan `DB_NAME` menunjuk ke database yang benar
+   dan user database memiliki izin membuat tabel. Alternatifnya, buat manual
+   lewat Aiven Console (query editor) atau CLI MySQL:
    ```bash
    mysql --host=<HOST> --port=<PORT> --user=<USER> --password=<PASSWORD> \
      --database=<DBNAME> --ssl-mode=REQUIRED < schema.sql
    ```
+
+Skema membuat satu baris stok untuk setiap produk. Jika tabel `stocks`
+sudah dibuat sebelumnya tanpa batas unik `product_id`, tambahkan indeks ini
+(pastikan tidak ada beberapa baris stok untuk produk yang sama terlebih dahulu):
+
+```sql
+ALTER TABLE stocks ADD UNIQUE KEY uq_stocks_product_id (product_id);
+```
 
 ## 2. Setup Project Secara Lokal
 
@@ -63,7 +74,8 @@ Jalankan secara lokal:
 npm run dev
 ```
 
-Buka http://localhost:3000 — kamu akan melihat form tambah produk dan tabel daftar produk.
+Buka http://localhost:3000 — kamu akan melihat form tambah produk (termasuk stok)
+dan tabel daftar produk beserta jumlah stoknya.
 
 ## 3. Push ke GitHub
 
@@ -94,10 +106,11 @@ Pastikan `.env.local` **tidak** ikut ter-commit (sudah otomatis diabaikan lewat 
 
 ## Fitur
 
-- **Create**: tambah produk baru lewat form (nama, deskripsi, harga)
+- **Create**: tambah produk baru lewat form (nama, deskripsi, harga, stok)
 - **Read**: daftar semua produk otomatis dimuat saat halaman dibuka
-- **Update**: klik "Edit" pada baris produk untuk mengubah data
+- **Update**: klik "Edit" pada baris produk untuk mengubah data produk dan stok
 - **Delete**: klik "Hapus" untuk menghapus produk (dengan konfirmasi)
+- **Stok**: jumlah stok disimpan di tabel `stocks` dan otomatis mulai dari 0
 
 ## Catatan
 

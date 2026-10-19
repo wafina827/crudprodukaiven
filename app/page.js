@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-const emptyForm = { name: '', description: '', price: '' };
+const emptyForm = { name: '', description: '', price: '', quantity: '0' };
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -42,6 +42,7 @@ export default function Home() {
       name: product.name,
       description: product.description || '',
       price: product.price,
+      quantity: product.quantity ?? 0,
     });
   }
 
@@ -139,6 +140,21 @@ export default function Home() {
             />
           </div>
 
+          <div className="form-row">
+            <label htmlFor="quantity">Stok</label>
+            <input
+              id="quantity"
+              name="quantity"
+              type="number"
+              step="1"
+              min="0"
+              value={form.quantity}
+              onChange={handleChange}
+              placeholder="0"
+              required
+            />
+          </div>
+
           <div className="form-actions">
             <button type="submit" className="btn-primary" disabled={saving}>
               {saving ? 'Menyimpan...' : editingId ? 'Update' : 'Simpan'}
@@ -162,6 +178,7 @@ export default function Home() {
             <th>Nama</th>
             <th>Deskripsi</th>
             <th>Harga</th>
+            <th>Stok</th>
             <th>Aksi</th>
           </tr>
         </thead>
@@ -171,6 +188,7 @@ export default function Home() {
               <td>{p.name}</td>
               <td>{p.description}</td>
               <td>Rp {Number(p.price).toLocaleString('id-ID')}</td>
+              <td>{p.quantity}</td>
               <td>
                 <button className="btn-edit" onClick={() => startEdit(p)}>
                   Edit

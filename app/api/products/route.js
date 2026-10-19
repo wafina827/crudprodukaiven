@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
-import { getPool } from '@/lib/db';
+import { ensureSchema, getPool } from '@/lib/db';
 
 // GET /api/products -> list all products
 export async function GET() {
   try {
+    await ensureSchema();
     const pool = getPool();
     const [rows] = await pool.query(
-      'SELECT id, name, description, price, created_at FROM products ORDER BY id DESC'
+      `SELECT p.id, p.name, p.description, p.price, p.created_at,
+              COALESCE(s.quantity, 0) AS quantity
+       FROM products p
+       LEFT JOIN stocks s ON s.product_id = p.id
+       ORDER BY p.id DESC`
     );
     return NextResponse.json(rows);
   } catch (error) {
@@ -19,7 +24,7 @@ export async function GET() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, description, price } = body;
+    const { name, description, price, quantity = 0 } = body;
 
     if (!name || price === undefined || price === '') {
       return NextResponse.json(
@@ -28,14 +33,43 @@ export async function POST(request) {
       );
     }
 
+    if (
+      quantity === null ||
+      quantity === '' ||
+      !Number.isInteger(Number(quantity)) ||
+      Number(quantity) < 0
+    ) {
+      return NextResponse.json(
+        { error: 'Stok harus berupa bilangan bulat lebih dari atau sama dengan 0' },
+        { status: 400 }
+      );
+    }
+
+    await ensureSchema();
     const pool = getPool();
-    const [result] = await pool.query(
-      'INSERT INTO products (name, description, price) VALUES (?, ?, ?)',
-      [name, description || null, price]
-    );
+    const connection = await pool.getConnection();
+    let result;
+    try {
+      await connection.beginTransaction();
+      const [productResult] = await connection.query(
+        'INSERT INTO products (name, description, price) VALUES (?, ?, ?)',
+        [name, description || null, price]
+      );
+      result = productResult;
+      await connection.query(
+        'INSERT INTO stocks (product_id, quantity) VALUES (?, ?)',
+        [result.insertId, Number(quantity)]
+      );
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
 
     return NextResponse.json(
-      { id: result.insertId, name, description, price },
+      { id: result.insertId, name, description, price, quantity: Number(quantity) },
       { status: 201 }
     );
   } catch (error) {
